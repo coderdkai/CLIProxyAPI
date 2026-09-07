@@ -488,7 +488,19 @@ func repairSchemaNode(node map[string]any, addMissingArrayItems bool) (map[strin
 	if addMissingArrayItems {
 		if isArrayDeclaredType(clone["type"]) {
 			if _, hasItems := clone["items"]; !hasItems {
-				clone["items"] = map[string]any{"type": "string"}
+				if prefList, hasPref := clone["prefixItems"].([]any); hasPref && len(prefList) > 0 {
+					if firstMap, isMap := prefList[0].(map[string]any); isMap {
+						clone["items"] = firstMap
+					} else {
+						clone["items"] = map[string]any{"type": "string"}
+					}
+				} else {
+					clone["items"] = map[string]any{"type": "string"}
+				}
+				modified = true
+			}
+			if _, hasPref := clone["prefixItems"]; hasPref {
+				delete(clone, "prefixItems")
 				modified = true
 			}
 		} else if _, hasItems := clone["items"]; hasItems {
@@ -1285,7 +1297,7 @@ func removeUnsupportedKeywords(jsonStr string, options jsonSchemaCleanOptions) s
 	keywords := append(constraintKeywords(options),
 		"$schema", "$defs", "definitions", "const", "$ref", "$id", "id", "additionalProperties",
 		"$anchor", "$vocabulary", "$dynamicRef", "$dynamicAnchor",
-		"propertyNames", "patternProperties", // Gemini doesn't support these schema keywords
+		"propertyNames", "patternProperties", "prefixItems", // Gemini doesn't support these schema keywords
 		"if", "then", "else",
 		"$comment", "enumDescriptions", "enumTitles", "prefill", "deprecated", "encrypted", // Schema metadata fields unsupported by Gemini
 		"additionalItems", "unevaluatedProperties", "unevaluatedItems", "contentSchema",
